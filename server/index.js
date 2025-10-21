@@ -42,7 +42,7 @@ db.serialize(() => {
       console.error('Error checking products count:', err);
       return;
     }
-    
+
     if (row.count === 0) {
       console.log('Insertando productos de ejemplo...');
       db.run(`INSERT INTO products (name, description, price, image_url, category) VALUES 
@@ -96,7 +96,7 @@ app.get('/api/products/:id', (req, res) => {
 // Crear un nuevo producto
 app.post('/api/products', (req, res) => {
   const { name, description, price, image_url, category } = req.body;
-  
+
   if (!name || !price) {
     res.status(400).json({ error: 'Nombre y precio son requeridos' });
     return;
@@ -105,13 +105,13 @@ app.post('/api/products', (req, res) => {
   db.run(
     'INSERT INTO products (name, description, price, image_url, category) VALUES (?, ?, ?, ?, ?)',
     [name, description, price, image_url || 'https://via.placeholder.com/300x200?text=Producto', category || 'General'],
-    function(err) {
+    function (err) {
       if (err) {
         res.status(500).json({ error: err.message });
         return;
       }
-      res.status(201).json({ 
-        id: this.lastID, 
+      res.status(201).json({
+        id: this.lastID,
         message: 'Producto creado exitosamente',
         product: { id: this.lastID, name, description, price, image_url, category }
       });
@@ -123,11 +123,11 @@ app.post('/api/products', (req, res) => {
 app.put('/api/products/:id', (req, res) => {
   const { id } = req.params;
   const { name, description, price, image_url, category } = req.body;
-  
+
   db.run(
     'UPDATE products SET name = ?, description = ?, price = ?, image_url = ?, category = ? WHERE id = ?',
     [name, description, price, image_url, category, id],
-    function(err) {
+    function (err) {
       if (err) {
         res.status(500).json({ error: err.message });
         return;
@@ -144,7 +144,7 @@ app.put('/api/products/:id', (req, res) => {
 // Eliminar un producto
 app.delete('/api/products/:id', (req, res) => {
   const { id } = req.params;
-  db.run('DELETE FROM products WHERE id = ?', [id], function(err) {
+  db.run('DELETE FROM products WHERE id = ?', [id], function (err) {
     if (err) {
       res.status(500).json({ error: err.message });
       return;
@@ -171,7 +171,7 @@ app.get('/api/categories', (req, res) => {
 // Servir archivos estáticos del frontend en producción
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, '../client/build')));
-  
+
   app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, '../client/build', 'index.html'));
   });
@@ -199,3 +199,17 @@ process.on('SIGINT', () => {
     process.exit(0);
   });
 });
+// --- Health check ---
+app.get('/health', (_req, res) => {
+  res.status(200).json({ status: 'ok', uptime: process.uptime() });
+});
+
+// --- Servir frontend en producción ---
+//const path = require('path');
+if (process.env.NODE_ENV === 'production') {
+  const clientBuildPath = path.join(__dirname, 'public'); // acá vamos a copiar el build
+  app.use(express.static(clientBuildPath));
+  app.get('*', (_req, res) => {
+    res.sendFile(path.join(clientBuildPath, 'index.html'));
+  });
+}

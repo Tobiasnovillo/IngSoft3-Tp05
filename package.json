@@ -8,10 +8,16 @@
     "server": "cd server && npm run dev",
     "client": "cd client && npm start",
     "install-all": "npm install && cd server && npm install && cd ../client && npm install",
-    "build": "cd client && npm run build",
+    "build": "npm --prefix client run build && node ./scripts/copy-build.js",
     "start": "cd server && npm start"
   },
-  "keywords": ["marketplace", "react", "nodejs", "express", "sqlite"],
+  "keywords": [
+    "marketplace",
+    "react",
+    "nodejs",
+    "express",
+    "sqlite"
+  ],
   "author": "MiniShop",
   "license": "MIT",
   "devDependencies": {

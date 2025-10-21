@@ -1,0 +1,120 @@
+trigger:
+- main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  Node_Version: '18.x'
+  azureSubscription: 'azure-tp05-connection'
+
+stages:
+# =======================
+# BUILD FRONT + BACK
+# =======================
+- stage: Build
+  jobs:
+  - job: Build
+    steps:
+    - task: NodeTool@0
+      inputs:
+        versionSpec: '$(Node_Version)'
+
+    - script: |
+        npm ci
+        npm run install-all
+        npm run build
+      displayName: Build client + copy to server/public
+
+    - task: ArchiveFiles@2
+      inputs:
+        rootFolderOrFile: 'server'
+        includeRootFolder: false
+        archiveType: 'zip'
+        archiveFile: '$(Build.ArtifactStagingDirectory)/server.zip'
+      displayName: Package backend
+
+    - task: ArchiveFiles@2
+      inputs:
+        rootFolderOrFile: 'client/build'
+        includeRootFolder: true
+        archiveType: 'zip'
+        archiveFile: '$(Build.ArtifactStagingDirectory)/client.zip'
+      displayName: Package frontend
+
+    - publish: '$(Build.ArtifactStagingDirectory)'
+      artifact: 'drop'
+
+# =======================
+# DEPLOY QA
+# =======================
+- stage: QA
+  dependsOn: Build
+  variables:
+    - group: minishop-qa
+  jobs:
+  - deployment: DeployQA
+    environment: 'QA'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - download: current
+            artifact: drop
+
+          # Backend
+          - task: AzureWebApp@1
+            inputs:
+              azureSubscription: '$(azureSubscription)'
+              appType: 'webAppLinux'
+              appName: '$(AZURE_WEBAPP_API_NAME)'
+              package: '$(Pipeline.Workspace)/drop/server.zip'
+              startUpCommand: 'npm start --prefix server'
+              runtimeStack: 'NODE|18-lts'
+
+          # Frontend
+          - task: AzureWebApp@1
+            inputs:
+              azureSubscription: '$(azureSubscription)'
+              appType: 'webAppLinux'
+              appName: '$(AZURE_WEBAPP_FRONT_NAME)'
+              package: '$(Pipeline.Workspace)/drop/client.zip'
+              startUpCommand: 'npx serve -s build -l 8080'
+              runtimeStack: 'NODE|18-lts'
+
+# =======================
+# DEPLOY PROD
+# =======================
+- stage: PROD
+  dependsOn: QA
+  variables:
+    - group: minishop-prod
+  jobs:
+  - deployment: DeployPROD
+    environment: 'PROD'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - download: current
+            artifact: drop
+
+          # Backend
+          - task: AzureWebApp@1
+            inputs:
+              azureSubscription: '$(azureSubscription)'
+              appType: 'webAppLinux'
+              appName: '$(AZURE_WEBAPP_API_NAME)'
+              package: '$(Pipeline.Workspace)/drop/server.zip'
+              startUpCommand: 'npm start --prefix server'
+              runtimeStack: 'NODE|18-lts'
+
+          # Frontend
+          - task: AzureWebApp@1
+            inputs:
+              azureSubscription: '$(azureSubscription)'
+              appType: 'webAppLinux'
+              appName: '$(AZURE_WEBAPP_FRONT_NAME)'
+              package: '$(Pipeline.Workspace)/drop/client.zip'
+              startUpCommand: 'npx serve -s build -l 8080'
+              runtimeStack: 'NODE|18-lts'

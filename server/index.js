@@ -36,14 +36,32 @@ db.serialize(() => {
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
 
-  // Insertar algunos productos de ejemplo
-  db.run(`INSERT OR IGNORE INTO products (name, description, price, image_url, category) VALUES 
-    ('Laptop Gaming', 'Laptop potente para gaming', 1200.00, 'https://via.placeholder.com/300x200?text=Laptop', 'Electrónicos'),
-    ('Smartphone', 'Teléfono inteligente último modelo', 800.00, 'https://via.placeholder.com/300x200?text=Smartphone', 'Electrónicos'),
-    ('Auriculares', 'Auriculares inalámbricos con cancelación de ruido', 150.00, 'https://via.placeholder.com/300x200?text=Auriculares', 'Accesorios'),
-    ('Libro de Programación', 'Guía completa de JavaScript', 45.00, 'https://via.placeholder.com/300x200?text=Libro', 'Libros'),
-    ('Cafetera', 'Cafetera automática premium', 200.00, 'https://via.placeholder.com/300x200?text=Cafetera', 'Hogar')
-  `);
+  // Insertar algunos productos de ejemplo solo si la tabla está vacía
+  db.get('SELECT COUNT(*) as count FROM products', (err, row) => {
+    if (err) {
+      console.error('Error checking products count:', err);
+      return;
+    }
+    
+    if (row.count === 0) {
+      console.log('Insertando productos de ejemplo...');
+      db.run(`INSERT INTO products (name, description, price, image_url, category) VALUES 
+        ('Laptop Gaming', 'Laptop potente para gaming', 1200.00, 'https://via.placeholder.com/300x200?text=Laptop', 'Electrónicos'),
+        ('Smartphone', 'Teléfono inteligente último modelo', 800.00, 'https://via.placeholder.com/300x200?text=Smartphone', 'Electrónicos'),
+        ('Auriculares', 'Auriculares inalámbricos con cancelación de ruido', 150.00, 'https://via.placeholder.com/300x200?text=Auriculares', 'Accesorios'),
+        ('Libro de Programación', 'Guía completa de JavaScript', 45.00, 'https://via.placeholder.com/300x200?text=Libro', 'Libros'),
+        ('Cafetera', 'Cafetera automática premium', 200.00, 'https://via.placeholder.com/300x200?text=Cafetera', 'Hogar')
+      `, (err) => {
+        if (err) {
+          console.error('Error inserting sample products:', err);
+        } else {
+          console.log('Productos de ejemplo insertados correctamente');
+        }
+      });
+    } else {
+      console.log(`Base de datos ya contiene ${row.count} productos. No se insertarán productos de ejemplo.`);
+    }
+  });
 });
 
 // Rutas

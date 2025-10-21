@@ -12,7 +12,7 @@ client/.env.test.local
 client/.env.production.local
 
 # Ignorar base de datos (opcional, puedes mantenerla en git)
-database.sqlite
+# database.sqlite
 
 # Ignorar archivos del sistema
 .DS_Store

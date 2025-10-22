@@ -69,7 +69,7 @@ stages:
               appType: 'webAppLinux'
               appName: '$(AZURE_WEBAPP_API_NAME)'
               package: '$(Pipeline.Workspace)/drop/server.zip'
-              startUpCommand: 'npm start --prefix server'
+              startUpCommand: 'npm start'
               runtimeStack: 'NODE|18-lts'
 
           # Frontend
@@ -106,7 +106,7 @@ stages:
               appType: 'webAppLinux'
               appName: '$(AZURE_WEBAPP_API_NAME)'
               package: '$(Pipeline.Workspace)/drop/server.zip'
-              startUpCommand: 'npm start --prefix server'
+              startUpCommand: 'npm start'
               runtimeStack: 'NODE|18-lts'
 
           # Frontend

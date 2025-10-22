@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import './App.css';
 
-const API_BASE_URL = process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:5000/api';
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000/api';
+
+
 
 // Placeholder local en data URI para evitar dependencias externas y loops de onError
 const buildPlaceholderDataUri = (width = 300, height = 200, text = 'Imagen no disponible') => {

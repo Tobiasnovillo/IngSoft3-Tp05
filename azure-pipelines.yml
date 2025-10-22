@@ -5,30 +5,34 @@ pool:
   vmImage: 'ubuntu-latest'
 
 variables:
-  Node_Version: '18.x'
+  Node_Version: '20.x'
   azureSubscription: 'azure-tp05-connection'
 
-# =======================
-# BUILD FRONT + BACK
-# =======================
+# ======================================================
+# 🧱 BUILD STAGE – Construcción Frontend + Backend
+# ======================================================
 stages:
 - stage: Build
+  displayName: "Build Frontend + Backend"
+  variables:
+    - group: minishop-qa
   jobs:
-  - job: Build
+  - job: BuildJob
     steps:
     - task: NodeTool@0
       inputs:
-        versionSpec: '$(Node_Version)'
+        versionSpec: '20.x'
 
     - script: |
+        echo "📦 Instalando dependencias..."
         npm ci
         npm run install-all
         cd client
-        echo "Building frontend with API_BASE_URL=$(REACT_APP_API_BASE_URL)"
+        echo "🌐 Usando REACT_APP_API_BASE_URL=$(REACT_APP_API_BASE_URL)"
         export REACT_APP_API_BASE_URL=$(REACT_APP_API_BASE_URL)
         npm run build
         cd ..
-      displayName: Build client + copy to server/public
+      displayName: "Build frontend con variable QA"
 
     - task: ArchiveFiles@2
       inputs:
@@ -36,7 +40,6 @@ stages:
         includeRootFolder: false
         archiveType: 'zip'
         archiveFile: '$(Build.ArtifactStagingDirectory)/server.zip'
-      displayName: Package backend
 
     - task: ArchiveFiles@2
       inputs:
@@ -44,19 +47,22 @@ stages:
         includeRootFolder: true
         archiveType: 'zip'
         archiveFile: '$(Build.ArtifactStagingDirectory)/client.zip'
-      displayName: Package frontend
 
     - publish: '$(Build.ArtifactStagingDirectory)'
       artifact: 'drop'
-# =======================
-# DEPLOY QA
-# =======================
+
+
+# ======================================================
+# 🧪 QA STAGE – Deploy QA
+# ======================================================
 - stage: QA
+  displayName: "Deploy to QA"
   dependsOn: Build
   variables:
     - group: minishop-qa
   jobs:
   - deployment: DeployQA
+    displayName: "Deploy QA"
     environment: 'QA'
     strategy:
       runOnce:
@@ -65,8 +71,9 @@ stages:
           - download: current
             artifact: drop
 
-          # Backend
+          # 🔧 Backend QA
           - task: AzureWebApp@1
+            displayName: "🚀 Deploy backend QA"
             inputs:
               azureSubscription: '$(azureSubscription)'
               appType: 'webAppLinux'
@@ -75,8 +82,9 @@ stages:
               startUpCommand: 'npm start'
               runtimeStack: 'NODE|20-lts'
 
-          # Frontend
+          # 🎨 Frontend QA
           - task: AzureWebApp@1
+            displayName: "🚀 Deploy frontend QA"
             inputs:
               azureSubscription: '$(azureSubscription)'
               appType: 'webAppLinux'
@@ -85,15 +93,17 @@ stages:
               startUpCommand: 'npx serve -s build -l 8080'
               runtimeStack: 'NODE|20-lts'
 
-# =======================
-# DEPLOY PROD
-# =======================
+# ======================================================
+# 🚀 PROD STAGE – Deploy Producción
+# ======================================================
 - stage: PROD
+  displayName: "Deploy to Production"
   dependsOn: QA
   variables:
     - group: minishop-prod
   jobs:
   - deployment: DeployPROD
+    displayName: "Deploy PROD"
     environment: 'PROD'
     strategy:
       runOnce:
@@ -102,8 +112,9 @@ stages:
           - download: current
             artifact: drop
 
-          # Backend
+          # 🔧 Backend PROD
           - task: AzureWebApp@1
+            displayName: "🚀 Deploy backend PROD"
             inputs:
               azureSubscription: '$(azureSubscription)'
               appType: 'webAppLinux'
@@ -112,8 +123,9 @@ stages:
               startUpCommand: 'npm start'
               runtimeStack: 'NODE|20-lts'
 
-          # Frontend
+          # 🎨 Frontend PROD
           - task: AzureWebApp@1
+            displayName: "🚀 Deploy frontend PROD"
             inputs:
               azureSubscription: '$(azureSubscription)'
               appType: 'webAppLinux'

@@ -46,11 +46,11 @@ db.serialize(() => {
     if (row.count === 0) {
       console.log('Insertando productos de ejemplo...');
       db.run(`INSERT INTO products (name, description, price, image_url, category) VALUES 
-        ('Laptop Gaming', 'Laptop potente para gaming', 1200.00, 'https://via.placeholder.com/300x200?text=Laptop', 'Electrónicos'),
-        ('Smartphone', 'Teléfono inteligente último modelo', 800.00, 'https://via.placeholder.com/300x200?text=Smartphone', 'Electrónicos'),
-        ('Auriculares', 'Auriculares inalámbricos con cancelación de ruido', 150.00, 'https://via.placeholder.com/300x200?text=Auriculares', 'Accesorios'),
-        ('Libro de Programación', 'Guía completa de JavaScript', 45.00, 'https://via.placeholder.com/300x200?text=Libro', 'Libros'),
-        ('Cafetera', 'Cafetera automática premium', 200.00, 'https://via.placeholder.com/300x200?text=Cafetera', 'Hogar')
+        ('Laptop Gaming', 'Laptop potente para gaming', 1200.00, NULL, 'Electrónicos'),
+        ('Smartphone', 'Teléfono inteligente último modelo', 800.00, NULL, 'Electrónicos'),
+        ('Auriculares', 'Auriculares inalámbricos con cancelación de ruido', 150.00, NULL, 'Accesorios'),
+        ('Libro de Programación', 'Guía completa de JavaScript', 45.00, NULL, 'Libros'),
+        ('Cafetera', 'Cafetera automática premium', 200.00, NULL, 'Hogar')
       `, (err) => {
         if (err) {
           console.error('Error inserting sample products:', err);
@@ -168,12 +168,12 @@ app.get('/api/categories', (req, res) => {
   });
 });
 
-// Servir archivos estáticos del frontend en producción
+// Servir frontend en producción desde server/public (build copiado por npm run build en raíz)
 if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '../client/build')));
-
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../client/build', 'index.html'));
+  const clientBuildPath = path.join(__dirname, 'public');
+  app.use(express.static(clientBuildPath));
+  app.get('*', (_req, res) => {
+    res.sendFile(path.join(clientBuildPath, 'index.html'));
   });
 }
 
@@ -204,12 +204,4 @@ app.get('/health', (_req, res) => {
   res.status(200).json({ status: 'ok', uptime: process.uptime() });
 });
 
-// --- Servir frontend en producción ---
-//const path = require('path');
-if (process.env.NODE_ENV === 'production') {
-  const clientBuildPath = path.join(__dirname, 'public'); // acá vamos a copiar el build
-  app.use(express.static(clientBuildPath));
-  app.get('*', (_req, res) => {
-    res.sendFile(path.join(clientBuildPath, 'index.html'));
-  });
-}
+// --- (unificado) Servir frontend en producción arriba ---

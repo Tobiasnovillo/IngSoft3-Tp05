@@ -1,0 +1,11 @@
+{
+    "watch": [
+        "./**/*.js"
+    ],
+    "ignore": [
+        "database.sqlite",
+        "public/**",
+        "node_modules/**"
+    ],
+    "ext": "js,json"
+}

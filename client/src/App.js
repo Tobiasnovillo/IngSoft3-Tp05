@@ -4,6 +4,17 @@ import './App.css';
 
 const API_BASE_URL = process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:5000/api';
 
+// Placeholder local en data URI para evitar dependencias externas y loops de onError
+const buildPlaceholderDataUri = (width = 300, height = 200, text = 'Imagen no disponible') => {
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${width}' height='${height}'>` +
+    `<rect width='100%' height='100%' fill='#e5e7eb'/>` +
+    `<text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' ` +
+    `font-family='sans-serif' font-size='16' fill='#6b7280'>${text}</text>` +
+    `</svg>`;
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+};
+const PLACEHOLDER_IMG = buildPlaceholderDataUri(300, 200, 'Sin imagen');
+
 function App() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -62,7 +73,7 @@ function App() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!formData.name || !formData.price) {
       setError('Nombre y precio son requeridos');
       return;
@@ -78,7 +89,7 @@ function App() {
         await axios.post(`${API_BASE_URL}/products`, formData);
         setSuccess('Producto agregado exitosamente');
       }
-      
+
       resetForm();
       fetchProducts();
     } catch (err) {
@@ -145,8 +156,8 @@ function App() {
           )}
 
           <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-            <button 
-              className="btn" 
+            <button
+              className="btn"
               onClick={() => setShowAddForm(!showAddForm)}
             >
               {showAddForm ? 'Cancelar' : '➕ Agregar Producto'}
@@ -233,9 +244,9 @@ function App() {
                   <button type="submit" className="btn">
                     {editingProduct ? 'Actualizar Producto' : 'Agregar Producto'}
                   </button>
-                  <button 
-                    type="button" 
-                    className="btn btn-secondary" 
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
                     onClick={resetForm}
                     style={{ marginLeft: '1rem' }}
                   >
@@ -257,12 +268,15 @@ function App() {
             <div className="products-grid">
               {products.map(product => (
                 <div key={product.id} className="product-card">
-                  <img 
-                    src={product.image_url || 'https://via.placeholder.com/300x200?text=Sin+Imagen'} 
+                  <img
+                    src={product.image_url || PLACEHOLDER_IMG}
                     alt={product.name}
                     className="product-image"
                     onError={(e) => {
-                      e.target.src = 'https://via.placeholder.com/300x200?text=Error+Imagen';
+                      const img = e.currentTarget;
+                      if (img.dataset.fallbackApplied === 'true') return; // evita loop
+                      img.dataset.fallbackApplied = 'true';
+                      img.src = PLACEHOLDER_IMG;
                     }}
                   />
                   <div className="product-info">
@@ -275,13 +289,13 @@ function App() {
                       <span className="product-category">{product.category}</span>
                     )}
                     <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem' }}>
-                      <button 
+                      <button
                         className="btn btn-small"
                         onClick={() => handleEdit(product)}
                       >
                         ✏️ Editar
                       </button>
-                      <button 
+                      <button
                         className="btn btn-small btn-danger"
                         onClick={() => handleDelete(product.id)}
                       >

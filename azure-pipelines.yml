@@ -70,7 +70,7 @@ stages:
               appName: '$(AZURE_WEBAPP_API_NAME)'
               package: '$(Pipeline.Workspace)/drop/server.zip'
               startUpCommand: 'npm start'
-              runtimeStack: 'NODE|18-lts'
+              runtimeStack: 'NODE|20-lts'
 
           # Frontend
           - task: AzureWebApp@1
@@ -80,7 +80,7 @@ stages:
               appName: '$(AZURE_WEBAPP_FRONT_NAME)'
               package: '$(Pipeline.Workspace)/drop/client.zip'
               startUpCommand: 'npx serve -s build -l 8080'
-              runtimeStack: 'NODE|18-lts'
+              runtimeStack: 'NODE|20-lts'
 
 # =======================
 # DEPLOY PROD
@@ -107,7 +107,7 @@ stages:
               appName: '$(AZURE_WEBAPP_API_NAME)'
               package: '$(Pipeline.Workspace)/drop/server.zip'
               startUpCommand: 'npm start'
-              runtimeStack: 'NODE|18-lts'
+              runtimeStack: 'NODE|20-lts'
 
           # Frontend
           - task: AzureWebApp@1
@@ -117,4 +117,4 @@ stages:
               appName: '$(AZURE_WEBAPP_FRONT_NAME)'
               package: '$(Pipeline.Workspace)/drop/client.zip'
               startUpCommand: 'npx serve -s build -l 8080'
-              runtimeStack: 'NODE|18-lts'
+              runtimeStack: 'NODE|20-lts'

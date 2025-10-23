@@ -218,7 +218,24 @@ const PORT = process.env.PORT || 5000;
 // =============================
 // ⚙️ MIDDLEWARE
 // =============================
-app.use(cors());
+const allowedOrigins = [
+  'https://myshop1.azurewebsites.net',       // frontend QA
+  'https://myshop1prod.azurewebsites.net',   // frontend PROD
+  'http://localhost:3000'                    // para desarrollo local
+];
+
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.warn('❌ Bloqueado por CORS:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  credentials: true
+}));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 

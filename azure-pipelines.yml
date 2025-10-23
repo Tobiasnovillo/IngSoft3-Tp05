@@ -168,6 +168,13 @@ stages:
         npm run build
         cd ..
       displayName: "Build frontend con variable QA"
+    - script: |
+        echo "🧹 Eliminando base local antes del empaquetado..."
+        find server -name "database.sqlite" -type f -delete || true
+        find server -name "*.db" -type f -delete || true
+        echo "✅ Base de datos eliminada antes del zip"
+      displayName: "Clean SQLite files before packaging"
+
 
     - task: ArchiveFiles@2
       inputs:

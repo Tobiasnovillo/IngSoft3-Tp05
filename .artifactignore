@@ -1,11 +1,21 @@
+# ===========================
+# 🧱 BASE DE DATOS
 # No empaquetar la base local
+# ===========================
 server/database.sqlite
 server/*.db
 
-# Carpetas pesadas
+# ===========================
+# 📦 CARPETAS PESADAS
+# ===========================
 node_modules/
 client/node_modules/
 server/node_modules/
 
-# Logs
+# ===========================
+# 🪵 LOGS
+# ===========================
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

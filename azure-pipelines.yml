@@ -8,16 +8,17 @@ variables:
   Node_Version: '20.x'
   azureSubscription: 'azure-tp05-connection'
 
-# ======================================================
-# 🧱 BUILD STAGE – Construcción Frontend + Backend
-# ======================================================
 stages:
+# ======================================================
+# 🧱 BUILD STAGE – Construye backend una vez y frontend para QA y PROD por separado
+# ======================================================
 - stage: Build
-  displayName: "Build Frontend + Backend"
-  variables:
-    - group: minishop-qa
+  displayName: "Build Frontend (QA & PROD) + Backend"
   jobs:
   - job: BuildJob
+    displayName: "Build artifacts"
+    variables:
+      - group: minishop-qa     # Usamos QA por default para tener AZURE_WEBAPP_*; luego sobreescribimos URL de PROD manualmente
     steps:
     - task: NodeTool@0
       inputs:
@@ -27,22 +28,59 @@ stages:
         echo "📦 Instalando dependencias..."
         npm ci
         npm run install-all
+      displayName: "Install root deps"
 
-        echo "🧹 Limpiando build previo del frontend..."
+    # ---------- FRONTEND QA ----------
+    - script: |
+        echo "🧹 Limpiando build previo..."
         rm -rf client/build
 
+        echo "🌐 [QA] REACT_APP_API_BASE_URL=$(REACT_APP_API_BASE_URL)"
         cd client
-        echo "🌐 Usando REACT_APP_API_BASE_URL=$(REACT_APP_API_BASE_URL)"
         export REACT_APP_API_BASE_URL=$(REACT_APP_API_BASE_URL)
         npm run build
         cd ..
-      displayName: "Build frontend limpio con variable QA"
 
+        echo "📦 Empaquetando client-qa.zip"
+      displayName: "Build frontend QA"
+    - task: ArchiveFiles@2
+      inputs:
+        rootFolderOrFile: 'client/build'
+        includeRootFolder: true
+        archiveType: 'zip'
+        archiveFile: '$(Build.ArtifactStagingDirectory)/client-qa.zip'
+        replaceExistingArchive: true
+
+    # ---------- FRONTEND PROD ----------
+    # IMPORTANTe: SOBREESCRIBIMOS explícitamente la URL de PROD aquí.
+    # Si preferís, podés guardarla como variable de minishop-prod y leerla con $(REACT_APP_API_BASE_URL_PROD)
     - script: |
-        echo "🧹 Eliminando base local antes del empaquetado..."
+        echo "🧹 Limpiando build previo..."
+        rm -rf client/build
+
+        # ⚙️ Ajustá esta línea si tu backend PROD tiene otro nombre:
+        export REACT_APP_API_BASE_URL="https://myshop1apiprod.azurewebsites.net/api"
+        echo "🌐 [PROD] REACT_APP_API_BASE_URL=$REACT_APP_API_BASE_URL"
+
+        cd client
+        npm run build
+        cd ..
+
+        echo "📦 Empaquetando client-prod.zip"
+      displayName: "Build frontend PROD (URL explícita)"
+    - task: ArchiveFiles@2
+      inputs:
+        rootFolderOrFile: 'client/build'
+        includeRootFolder: true
+        archiveType: 'zip'
+        archiveFile: '$(Build.ArtifactStagingDirectory)/client-prod.zip'
+        replaceExistingArchive: true
+
+    # ---------- BACKEND ----------
+    - script: |
+        echo "🧹 Eliminando SQLite locales antes de empaquetar..."
         find server -name "database.sqlite" -type f -delete || true
         find server -name "*.db" -type f -delete || true
-        echo "✅ Base de datos eliminada antes del zip"
       displayName: "Clean SQLite files before packaging"
 
     - task: ArchiveFiles@2
@@ -55,20 +93,10 @@ stages:
         excludePatterns: |
           database.sqlite
           **/database.sqlite
-          */database.sqlite
           **/*.db
-          */*.db
-
-    - task: ArchiveFiles@2
-      inputs:
-        rootFolderOrFile: 'client/build'
-        includeRootFolder: true
-        archiveType: 'zip'
-        archiveFile: '$(Build.ArtifactStagingDirectory)/client.zip'
 
     - publish: '$(Build.ArtifactStagingDirectory)'
       artifact: 'drop'
-
 
 # ======================================================
 # 🧪 QA STAGE – Deploy QA
@@ -90,8 +118,7 @@ stages:
             artifact: drop
 
           - script: |
-              echo "🌍 Verificando variable antes del deploy QA"
-              echo "REACT_APP_API_BASE_URL=$(REACT_APP_API_BASE_URL)"
+              echo "🌍 QA REACT_APP_API_BASE_URL=$(REACT_APP_API_BASE_URL)"
             displayName: "Mostrar API QA antes del deploy"
 
           # 🔧 Backend QA
@@ -105,17 +132,16 @@ stages:
               startUpCommand: 'npm start'
               runtimeStack: 'NODE|20-lts'
 
-          # 🎨 Frontend QA
+          # 🎨 Frontend QA (usa client-qa.zip)
           - task: AzureWebApp@1
             displayName: "🚀 Deploy frontend QA"
             inputs:
               azureSubscription: '$(azureSubscription)'
               appType: 'webAppLinux'
               appName: '$(AZURE_WEBAPP_FRONT_NAME)'
-              package: '$(Pipeline.Workspace)/drop/client.zip'
+              package: '$(Pipeline.Workspace)/drop/client-qa.zip'
               startUpCommand: 'npx serve -s build -l 8080'
               runtimeStack: 'NODE|20-lts'
-
 
 # ======================================================
 # 🚀 PROD STAGE – Deploy Producción
@@ -137,9 +163,8 @@ stages:
             artifact: drop
 
           - script: |
-              echo "🌍 Verificando variable antes del deploy PROD"
-              echo "REACT_APP_API_BASE_URL=$(REACT_APP_API_BASE_URL)"
-            displayName: "Mostrar API PROD antes del deploy"
+              echo "🌍 PROD REACT_APP_API_BASE_URL debería ser https://myshop1apiprod.azurewebsites.net/api"
+            displayName: "Mostrar API PROD esperada"
 
           # 🔧 Backend PROD
           - task: AzureWebApp@1
@@ -152,13 +177,13 @@ stages:
               startUpCommand: 'npm start'
               runtimeStack: 'NODE|20-lts'
 
-          # 🎨 Frontend PROD
+          # 🎨 Frontend PROD (usa client-prod.zip)
           - task: AzureWebApp@1
             displayName: "🚀 Deploy frontend PROD"
             inputs:
               azureSubscription: '$(azureSubscription)'
               appType: 'webAppLinux'
               appName: '$(AZURE_WEBAPP_FRONT_NAME)'
-              package: '$(Pipeline.Workspace)/drop/client.zip'
+              package: '$(Pipeline.Workspace)/drop/client-prod.zip'
               startUpCommand: 'npx serve -s build -l 8080'
               runtimeStack: 'NODE|20-lts'

@@ -242,9 +242,8 @@ app.use(bodyParser.urlencoded({ extended: true }));
 // =============================
 // 🗄️ BASE DE DATOS SQLITE (aislada por entorno)
 // =============================
-
-// Carpeta base configurable por entorno
-const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
+const SITE_NAME = process.env.WEBSITE_SITE_NAME || 'local';
+const DATA_DIR = process.env.DATA_DIR || path.join('/home', 'site', 'wwwroot', 'data', SITE_NAME);
 
 // Crear carpeta si no existe
 if (!fs.existsSync(DATA_DIR)) {
@@ -252,17 +251,20 @@ if (!fs.existsSync(DATA_DIR)) {
   console.log(`📁 Carpeta de datos creada: ${DATA_DIR}`);
 }
 
-// Archivo de base de datos (por entorno)
-const DB_PATH = process.env.DB_PATH || path.join(DATA_DIR, 'database.sqlite');
+// Archivo de base de datos (por entorno o por nombre del sitio)
+const DB_PATH = process.env.DB_PATH || path.join(DATA_DIR, `${SITE_NAME}.sqlite`);
+
+console.log('🧠 NODE_ENV:', process.env.NODE_ENV);
+console.log('🌐 WEBSITE_SITE_NAME:', SITE_NAME);
+console.log('📁 DATA_DIR:', DATA_DIR);
+console.log('🗂️ DB_PATH:', DB_PATH);
 
 // Conectar base de datos
 const db = new sqlite3.Database(DB_PATH, (err) => {
-  if (err) {
-    console.error('❌ Error al abrir la base de datos:', err);
-  } else {
-    console.log(`✅ Base de datos SQLite abierta en: ${DB_PATH}`);
-  }
+  if (err) console.error('❌ Error al abrir la base de datos:', err);
+  else console.log(`✅ Base de datos SQLite abierta en: ${DB_PATH}`);
 });
+
 
 // =============================
 // 🧱 CREAR TABLAS SI NO EXISTEN

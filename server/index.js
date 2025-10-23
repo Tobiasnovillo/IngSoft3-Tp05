@@ -215,22 +215,28 @@ const fs = require('fs');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middleware
+// =============================
+// ⚙️ MIDDLEWARE
+// =============================
 app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 // =============================
-// 🎯 BASE DE DATOS SQLITE (aislada por entorno)
+// 🗄️ BASE DE DATOS SQLITE (aislada por entorno)
 // =============================
-const DATA_DIR = process.env.DATA_DIR || path.join(__dirname);
-const DB_PATH = process.env.DB_PATH || path.join(DATA_DIR, 'database.sqlite');
+
+// Carpeta base configurable por entorno
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 
 // Crear carpeta si no existe
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
   console.log(`📁 Carpeta de datos creada: ${DATA_DIR}`);
 }
+
+// Archivo de base de datos (por entorno)
+const DB_PATH = process.env.DB_PATH || path.join(DATA_DIR, 'database.sqlite');
 
 // Conectar base de datos
 const db = new sqlite3.Database(DB_PATH, (err) => {
@@ -241,8 +247,11 @@ const db = new sqlite3.Database(DB_PATH, (err) => {
   }
 });
 
-// Crear tablas si no existen
+// =============================
+// 🧱 CREAR TABLAS SI NO EXISTEN
+// =============================
 db.serialize(() => {
+  // Tabla de productos
   db.run(`CREATE TABLE IF NOT EXISTS products (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
@@ -253,6 +262,7 @@ db.serialize(() => {
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
 
+  // Tabla de usuarios
   db.run(`CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT UNIQUE NOT NULL,
@@ -260,7 +270,7 @@ db.serialize(() => {
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
 
-  // Insertar productos de ejemplo solo si la tabla está vacía
+  // Productos de ejemplo
   db.get('SELECT COUNT(*) as count FROM products', (err, row) => {
     if (err) {
       console.error('Error checking products count:', err);
@@ -286,7 +296,7 @@ db.serialize(() => {
 });
 
 // =============================
-// 📡 RUTAS API
+// 📡 ENDPOINTS API
 // =============================
 
 // Obtener todos los productos

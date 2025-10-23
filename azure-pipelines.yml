@@ -1,3 +1,138 @@
+# trigger:
+# - main
+
+# pool:
+#   vmImage: 'ubuntu-latest'
+
+# variables:
+#   Node_Version: '20.x'
+#   azureSubscription: 'azure-tp05-connection'
+
+# # ======================================================
+# # 🧱 BUILD STAGE – Construcción Frontend + Backend
+# # ======================================================
+# stages:
+# - stage: Build
+#   displayName: "Build Frontend + Backend"
+#   variables:
+#     - group: minishop-qa
+#   jobs:
+#   - job: BuildJob
+#     steps:
+#     - task: NodeTool@0
+#       inputs:
+#         versionSpec: '20.x'
+
+#     - script: |
+#         echo "📦 Instalando dependencias..."
+#         npm ci
+#         npm run install-all
+#         cd client
+#         echo "🌐 Usando REACT_APP_API_BASE_URL=$(REACT_APP_API_BASE_URL)"
+#         export REACT_APP_API_BASE_URL=$(REACT_APP_API_BASE_URL)
+#         npm run build
+#         cd ..
+#       displayName: "Build frontend con variable QA"
+
+#     - task: ArchiveFiles@2
+#       inputs:
+#         rootFolderOrFile: 'server'
+#         includeRootFolder: false
+#         archiveType: 'zip'
+#         archiveFile: '$(Build.ArtifactStagingDirectory)/server.zip'
+
+#     - task: ArchiveFiles@2
+#       inputs:
+#         rootFolderOrFile: 'client/build'
+#         includeRootFolder: true
+#         archiveType: 'zip'
+#         archiveFile: '$(Build.ArtifactStagingDirectory)/client.zip'
+
+#     - publish: '$(Build.ArtifactStagingDirectory)'
+#       artifact: 'drop'
+
+
+# # ======================================================
+# # 🧪 QA STAGE – Deploy QA
+# # ======================================================
+# - stage: QA
+#   displayName: "Deploy to QA"
+#   dependsOn: Build
+#   variables:
+#     - group: minishop-qa
+#   jobs:
+#   - deployment: DeployQA
+#     displayName: "Deploy QA"
+#     environment: 'QA'
+#     strategy:
+#       runOnce:
+#         deploy:
+#           steps:
+#           - download: current
+#             artifact: drop
+
+#           # 🔧 Backend QA
+#           - task: AzureWebApp@1
+#             displayName: "🚀 Deploy backend QA"
+#             inputs:
+#               azureSubscription: '$(azureSubscription)'
+#               appType: 'webAppLinux'
+#               appName: '$(AZURE_WEBAPP_API_NAME)'
+#               package: '$(Pipeline.Workspace)/drop/server.zip'
+#               startUpCommand: 'npm start'
+#               runtimeStack: 'NODE|20-lts'
+
+#           # 🎨 Frontend QA
+#           - task: AzureWebApp@1
+#             displayName: "🚀 Deploy frontend QA"
+#             inputs:
+#               azureSubscription: '$(azureSubscription)'
+#               appType: 'webAppLinux'
+#               appName: '$(AZURE_WEBAPP_FRONT_NAME)'
+#               package: '$(Pipeline.Workspace)/drop/client.zip'
+#               startUpCommand: 'npx serve -s build -l 8080'
+#               runtimeStack: 'NODE|20-lts'
+
+# # ======================================================
+# # 🚀 PROD STAGE – Deploy Producción
+# # ======================================================
+# - stage: PROD
+#   displayName: "Deploy to Production"
+#   dependsOn: QA
+#   variables:
+#     - group: minishop-prod
+#   jobs:
+#   - deployment: DeployPROD
+#     displayName: "Deploy PROD"
+#     environment: 'PROD'
+#     strategy:
+#       runOnce:
+#         deploy:
+#           steps:
+#           - download: current
+#             artifact: drop
+
+#           # 🔧 Backend PROD
+#           - task: AzureWebApp@1
+#             displayName: "🚀 Deploy backend PROD"
+#             inputs:
+#               azureSubscription: '$(azureSubscription)'
+#               appType: 'webAppLinux'
+#               appName: '$(AZURE_WEBAPP_API_NAME)'
+#               package: '$(Pipeline.Workspace)/drop/server.zip'
+#               startUpCommand: 'npm start'
+#               runtimeStack: 'NODE|20-lts'
+
+#           # 🎨 Frontend PROD
+#           - task: AzureWebApp@1
+#             displayName: "🚀 Deploy frontend PROD"
+#             inputs:
+#               azureSubscription: '$(azureSubscription)'
+#               appType: 'webAppLinux'
+#               appName: '$(AZURE_WEBAPP_FRONT_NAME)'
+#               package: '$(Pipeline.Workspace)/drop/client.zip'
+#               startUpCommand: 'npx serve -s build -l 8080'
+#               runtimeStack: 'NODE|20-lts'
 trigger:
 - main
 
@@ -82,6 +217,24 @@ stages:
               startUpCommand: 'npm start'
               runtimeStack: 'NODE|20-lts'
 
+          # ✅ Health check Backend QA
+          - bash: |
+              set -e
+              API_URL="https://$(AZURE_WEBAPP_API_NAME).azurewebsites.net/health"
+              echo "🩺 Verificando salud del backend QA en $API_URL"
+              for i in {1..30}; do
+                code=$(curl -s -o /dev/null -w "%{http_code}" "$API_URL" || true)
+                if [ "$code" = "200" ]; then
+                  echo "✅ Backend QA saludable"
+                  exit 0
+                fi
+                echo "⏳ Backend no listo (HTTP $code). Reintento $i/30"
+                sleep 5
+              done
+              echo "❌ Health check backend falló"
+              exit 1
+            displayName: "Health check Backend QA"
+
           # 🎨 Frontend QA
           - task: AzureWebApp@1
             displayName: "🚀 Deploy frontend QA"
@@ -92,6 +245,25 @@ stages:
               package: '$(Pipeline.Workspace)/drop/client.zip'
               startUpCommand: 'npx serve -s build -l 8080'
               runtimeStack: 'NODE|20-lts'
+
+          # ✅ Health check Frontend QA
+          - bash: |
+              set -e
+              FRONT_URL="https://$(AZURE_WEBAPP_FRONT_NAME).azurewebsites.net"
+              echo "🩺 Verificando salud del frontend QA en $FRONT_URL"
+              for i in {1..30}; do
+                code=$(curl -s -o /tmp/page.html -w "%{http_code}" "$FRONT_URL" || true)
+                if [ "$code" = "200" ] && grep -qi "MiniShop" /tmp/page.html; then
+                  echo "✅ Frontend QA saludable"
+                  exit 0
+                fi
+                echo "⏳ Frontend no listo (HTTP $code). Reintento $i/30"
+                sleep 5
+              done
+              echo "❌ Health check frontend falló"
+              exit 1
+            displayName: "Health check Frontend QA"
+
 
 # ======================================================
 # 🚀 PROD STAGE – Deploy Producción
@@ -123,6 +295,24 @@ stages:
               startUpCommand: 'npm start'
               runtimeStack: 'NODE|20-lts'
 
+          # ✅ Health check Backend PROD
+          - bash: |
+              set -e
+              API_URL="https://$(AZURE_WEBAPP_API_NAME).azurewebsites.net/health"
+              echo "🩺 Verificando salud del backend PROD en $API_URL"
+              for i in {1..30}; do
+                code=$(curl -s -o /dev/null -w "%{http_code}" "$API_URL" || true)
+                if [ "$code" = "200" ]; then
+                  echo "✅ Backend PROD saludable"
+                  exit 0
+                fi
+                echo "⏳ Backend no listo (HTTP $code). Reintento $i/30"
+                sleep 5
+              done
+              echo "❌ Health check backend falló"
+              exit 1
+            displayName: "Health check Backend PROD"
+
           # 🎨 Frontend PROD
           - task: AzureWebApp@1
             displayName: "🚀 Deploy frontend PROD"
@@ -133,3 +323,21 @@ stages:
               package: '$(Pipeline.Workspace)/drop/client.zip'
               startUpCommand: 'npx serve -s build -l 8080'
               runtimeStack: 'NODE|20-lts'
+
+          # ✅ Health check Frontend PROD
+          - bash: |
+              set -e
+              FRONT_URL="https://$(AZURE_WEBAPP_FRONT_NAME).azurewebsites.net"
+              echo "🩺 Verificando salud del frontend PROD en $FRONT_URL"
+              for i in {1..30}; do
+                code=$(curl -s -o /tmp/page.html -w "%{http_code}" "$FRONT_URL" || true)
+                if [ "$code" = "200" ] && grep -qi "MiniShop" /tmp/page.html; then
+                  echo "✅ Frontend PROD saludable"
+                  exit 0
+                fi
+                echo "⏳ Frontend no listo (HTTP $code). Reintento $i/30"
+                sleep 5
+              done
+              echo "❌ Health check frontend falló"
+              exit 1
+            displayName: "Health check Frontend PROD"

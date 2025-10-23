@@ -1,0 +1,11 @@
+# No empaquetar la base local
+server/database.sqlite
+server/*.db
+
+# Carpetas pesadas
+node_modules/
+client/node_modules/
+server/node_modules/
+
+# Logs
+*.log

@@ -175,6 +175,10 @@ stages:
         includeRootFolder: false
         archiveType: 'zip'
         archiveFile: '$(Build.ArtifactStagingDirectory)/server.zip'
+        replaceExistingArchive: true
+        excludepatterns: |
+        **/database.sqlite
+        **/*.db
 
     - task: ArchiveFiles@2
       inputs:

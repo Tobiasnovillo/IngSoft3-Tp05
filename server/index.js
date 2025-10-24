@@ -215,16 +215,35 @@ const fs = require('fs');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middleware
-app.use(cors());
+// =============================
+// ⚙️ MIDDLEWARE
+// =============================
+const allowedOrigins = [
+  'https://myshop1.azurewebsites.net',       // frontend QA
+  'https://myshop1prod.azurewebsites.net',   // frontend PROD
+  'http://localhost:3000'                    // para desarrollo local
+];
+
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.warn('❌ Bloqueado por CORS:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  credentials: true
+}));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 // =============================
-// 🎯 BASE DE DATOS SQLITE (aislada por entorno)
+// 🗄️ BASE DE DATOS SQLITE (aislada por entorno)
 // =============================
-const DATA_DIR = process.env.DATA_DIR || path.join(__dirname);
-const DB_PATH = process.env.DB_PATH || path.join(DATA_DIR, 'database.sqlite');
+const SITE_NAME = process.env.WEBSITE_SITE_NAME || 'local';
+const DATA_DIR = process.env.DATA_DIR || path.join('/home', 'site', 'wwwroot', 'data', SITE_NAME);
 
 // Crear carpeta si no existe
 if (!fs.existsSync(DATA_DIR)) {
@@ -232,17 +251,26 @@ if (!fs.existsSync(DATA_DIR)) {
   console.log(`📁 Carpeta de datos creada: ${DATA_DIR}`);
 }
 
+// Archivo de base de datos (por entorno o por nombre del sitio)
+const DB_PATH = process.env.DB_PATH || path.join(DATA_DIR, `${SITE_NAME}.sqlite`);
+
+console.log('🧠 NODE_ENV:', process.env.NODE_ENV);
+console.log('🌐 WEBSITE_SITE_NAME:', SITE_NAME);
+console.log('📁 DATA_DIR:', DATA_DIR);
+console.log('🗂️ DB_PATH:', DB_PATH);
+
 // Conectar base de datos
 const db = new sqlite3.Database(DB_PATH, (err) => {
-  if (err) {
-    console.error('❌ Error al abrir la base de datos:', err);
-  } else {
-    console.log(`✅ Base de datos SQLite abierta en: ${DB_PATH}`);
-  }
+  if (err) console.error('❌ Error al abrir la base de datos:', err);
+  else console.log(`✅ Base de datos SQLite abierta en: ${DB_PATH}`);
 });
 
-// Crear tablas si no existen
+
+// =============================
+// 🧱 CREAR TABLAS SI NO EXISTEN
+// =============================
 db.serialize(() => {
+  // Tabla de productos
   db.run(`CREATE TABLE IF NOT EXISTS products (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
@@ -253,6 +281,7 @@ db.serialize(() => {
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
 
+  // Tabla de usuarios
   db.run(`CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT UNIQUE NOT NULL,
@@ -260,7 +289,7 @@ db.serialize(() => {
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
 
-  // Insertar productos de ejemplo solo si la tabla está vacía
+  // Productos de ejemplo
   db.get('SELECT COUNT(*) as count FROM products', (err, row) => {
     if (err) {
       console.error('Error checking products count:', err);
@@ -286,7 +315,7 @@ db.serialize(() => {
 });
 
 // =============================
-// 📡 RUTAS API
+// 📡 ENDPOINTS API
 // =============================
 
 // Obtener todos los productos

@@ -46,7 +46,7 @@ stages:
     - task: ArchiveFiles@2
       inputs:
         rootFolderOrFile: 'client/build'
-        includeRootFolder: true
+        includeRootFolder: false
         archiveType: 'zip'
         archiveFile: '$(Build.ArtifactStagingDirectory)/client-qa.zip'
         replaceExistingArchive: true
@@ -71,7 +71,7 @@ stages:
     - task: ArchiveFiles@2
       inputs:
         rootFolderOrFile: 'client/build'
-        includeRootFolder: true
+        includeRootFolder: false
         archiveType: 'zip'
         archiveFile: '$(Build.ArtifactStagingDirectory)/client-prod.zip'
         replaceExistingArchive: true

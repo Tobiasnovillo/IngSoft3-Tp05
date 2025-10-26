@@ -226,34 +226,75 @@ npm test
 
 
 
-tp6--------------------------------------------------------------
-## 🧪 Estrategia de Testing
+# TP06 – DevOps CI/CD + Testing Automation  
+**Integrantes:** Salvador Novillo Saravia, Santos Romero Reyna, Tobias Novillo Saravia  
+**Materia:** Ingeniería de Software III  
+**Año:** 2025  
 
-### Frameworks utilizados
-- **Backend:** Jest + Supertest  
-  Permite probar endpoints HTTP y la lógica del servicio Express sin iniciar el servidor.
-- **Frontend:** Jest + React Testing Library  
-  Permite testear componentes, hooks y lógica del frontend en un entorno jsdom simulado.
+---
 
-### Patrón utilizado
-Se aplicó el patrón **AAA (Arrange, Act, Assert)** en todos los tests:
-1. **Arrange:** se inicializan los mocks y datos.  
-2. **Act:** se ejecuta la función o endpoint.  
-3. **Assert:** se verifican los resultados esperados.
+## 🧱 1. Stack Tecnológico
 
-### Mocks y Stubs
-- Se mockeó `fetch()` en el frontend para simular respuestas del backend.  
-- Se utilizó **Supertest** en el backend para simular peticiones HTTP reales sin levantar el servidor.
+| Capa | Tecnología | Descripción |
+|------|-------------|--------------|
+| **Frontend** | React + Vite | Interfaz de usuario con integración a API REST |
+| **Backend** | Node.js + Express + SQLite3 | Servicio RESTful para gestión de productos |
+| **CI/CD** | Azure DevOps (Pipelines YAML + Releases Classic) | Pipeline automatizado de build, test y despliegue |
+| **Infraestructura** | Azure Web Apps (Linux) | Hospedaje en QA y Producción |
+| **Control de versiones** | GitHub | Repositorio principal conectado a Azure DevOps |
 
-### Casos de prueba principales
-- Backend: `/products` devuelve lista de productos.  
-- Frontend: `ProductList` renderiza correctamente y muestra los productos obtenidos de la API.  
-- Manejo de errores: respuesta vacía o `fetch` rechazado.
+---
 
-### Integración en CI/CD
-El pipeline ejecuta automáticamente los tests en la etapa de **Build** antes del despliegue:
-- Si falla algún test, el pipeline se detiene.  
-- Si pasa todo, continúa al deploy QA → PROD.
+## 🧩 2. Frameworks de Testing y Justificación
 
-### Evidencias
-Se adjuntan capturas de los resultados de Jest con 100 % passing tests y reporte de cobertura.
+| Capa | Framework | Motivo |
+|------|------------|--------|
+| **Backend** | Jest + Supertest | Permite testear endpoints Express sin necesidad de levantar manualmente el servidor. Se integra bien con SQLite y soporta mocks. |
+| **Frontend** | Jest + React Testing Library | Facilita testear componentes React de forma declarativa y centrada en el usuario. Emula el DOM con `jsdom`. |
+
+Los tests se ejecutan tanto **localmente** como **automáticamente en el pipeline**.
+
+---
+
+## 🧠 3. Estrategia de Mocking
+
+| Componente | Estrategia | Ejemplo |
+|-------------|-------------|----------|
+| **Backend (Servicio de Productos)** | Mock de base de datos SQLite mediante `jest.fn()` | Se reemplaza `db.all()` por una función simulada que retorna productos fijos. |
+| **Frontend (API Fetch)** | Mock global de `fetch` | En `api.test.js`, se define `global.fetch = jest.fn()` para interceptar llamadas y retornar respuestas JSON simuladas. |
+
+> 🎯 Con esto, los tests son **deterministas** y no dependen de conexión ni base de datos real.
+
+---
+
+## 🧪 4. Casos de Prueba Relevantes
+
+### 🔹 Backend (`products.controller.test.js`)
+- **GET /api/products** → verifica código 200 y contenido JSON.
+- **GET /api/products/:id** → devuelve producto correcto o 404 si no existe.
+
+### 🔹 Frontend (`ProductList.test.jsx`)
+- Renderiza `<ProductList />` con mock de API.
+- Usa `waitFor` para esperar la carga de productos.
+- Valida que aparezcan elementos con `expect(screen.getByText(...))`.
+
+---
+
+## ⚙️ 5. Ejecución Automática de Tests (CI/CD)
+
+Los tests se integraron en la etapa **Build** del pipeline YAML (`azure-pipelines.yml`):
+
+```yaml
+- script: |
+    echo "🧪 Ejecutando pruebas backend..."
+    cd server
+    npm ci
+    npm test -- --coverage --ci --reporters=jest-junit
+    cd ..
+
+    echo "🧪 Ejecutando pruebas frontend..."
+    cd client
+    npm ci
+    npm test -- --coverage --ci --reporters=jest-junit
+    cd ..
+  displayName: "Run automated tests"

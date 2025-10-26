@@ -298,3 +298,107 @@ Los tests se integraron en la etapa **Build** del pipeline YAML (`azure-pipeline
     npm test -- --coverage --ci --reporters=jest-junit
     cd ..
   displayName: "Run automated tests"
+
+
+
+# 🗣️ Defensa Oral – TP06 (Testing + DevOps)
+
+## 🎯 Preguntas sobre Testing y Automatización
+
+### 🧩 ¿Por qué elegiste estos frameworks de testing para tu stack tecnológico?
+Elegí **Jest** y **React Testing Library** para el frontend porque son los frameworks más estandarizados para aplicaciones React.  
+- Jest permite ejecutar tests de forma rápida, con un entorno de `jsdom` que simula el navegador.  
+- React Testing Library se centra en probar la aplicación desde la perspectiva del usuario, lo que ayuda a validar la funcionalidad real y no solo la implementación.  
+
+En el backend, usé **Jest** junto con **Supertest** porque facilita testear endpoints de Express sin levantar manualmente el servidor, lo que hace que las pruebas sean más ligeras y repetibles.  
+Ambos frameworks se integran fácilmente en pipelines CI/CD, lo que permitió automatizar los tests sin configuraciones adicionales.
+
+---
+
+### 🧠 ¿Cómo decidiste qué componentes mockear y cuáles probar con implementaciones reales?
+Mockeé todos los componentes **externos o con dependencias cambiantes**:
+- En el backend: la base de datos SQLite fue mockeada para evitar escribir/leer datos reales y lograr que las pruebas sean deterministas.  
+- En el frontend: se mockeó la función `fetch` para simular respuestas de la API sin depender del backend real.  
+
+Sin embargo, **no se mockean funciones de lógica interna** (por ejemplo, controladores o componentes puros) porque el objetivo es validar que esas funciones procesen los datos correctamente.
+
+En resumen, mockeo las **entradas/salidas externas**, pero pruebo la **lógica de negocio real**.
+
+---
+
+### 🔍 ¿Cómo validás que tus tests realmente están probando la lógica correcta?
+1. **Cobertura de código:** ejecuto los tests con `--coverage` para verificar que las funciones y ramas principales estén cubiertas.  
+2. **Aserciones específicas:** cada test incluye comprobaciones concretas (`expect`) sobre el estado final, no solo sobre la existencia de un elemento.  
+3. **Pruebas de error:** agregué casos negativos (por ejemplo, respuesta 404 o errores de red) para validar el manejo de excepciones.  
+4. **Mock controlado:** cuando mockeo datos, me aseguro de que los resultados esperados dependan directamente de la función bajo prueba y no del mock.
+
+Esto garantiza que los tests no pasen “por casualidad” y reflejen el comportamiento real del sistema.
+
+---
+
+### ⚙️ ¿Cómo manejás los tests que dependen de estado o datos externos?
+Los tests que dependen de estado (por ejemplo, consultas a la base de datos o llamadas a una API) se **aislan completamente**:
+- Uso `beforeEach()` y `afterEach()` para limpiar mocks y restaurar el estado inicial.  
+- Se mockean respuestas externas (API o DB) con datos consistentes.  
+- Si un test requiere un entorno específico (por ejemplo, usuario autenticado), se simula con fixtures o datos de ejemplo.
+
+Esto asegura que cada test sea independiente y no afecte a otros — uno puede fallar sin romper el resto del pipeline.
+
+---
+
+# 🧰 Defensa Oral – TP05 (DevOps, CI/CD y Azure)
+
+## ☁️ ¿Por qué elegiste esta herramienta de CI/CD para este escenario?
+Elegí **Azure DevOps Pipelines** porque:
+- Se integra directamente con **Azure Web Apps**, facilitando despliegues automáticos sin configuración adicional.  
+- Permite definir pipelines en YAML (para CI) y pipelines visuales (para Release), combinando automatización y control manual.  
+- Tiene gestión nativa de **Variables Groups**, **Service Connections** y **aprobaciones de Release**, todo dentro del mismo ecosistema.
+
+Además, es ideal para un entorno académico con recursos gratuitos y despliegues rápidos.
+
+---
+
+## 🔒 ¿Cómo gestionás variables sensibles entre entornos?
+Las variables se centralizan en **Variable Groups**:
+- `minishop-qa` y `minishop-prod` contienen credenciales, URLs y nombres de Web Apps.
+- Los valores críticos (`azureSubscription`, `DB_CONN_STRING`, `REACT_APP_API_BASE_URL`) están marcados como **secrets**.
+- El YAML no contiene credenciales directas; solo referencias como `$(REACT_APP_API_BASE_URL)`.
+
+Esto mantiene el código seguro y permite modificar configuraciones sin alterar el repositorio.
+
+---
+
+## ✅ ¿Qué criterios usás para aprobar un pase a Producción?
+1. **Tests automáticos aprobados** en la etapa Build.  
+2. **Despliegue QA exitoso** y verificado visualmente (sin errores HTTP 5xx).  
+3. **Integración completa** entre frontend y backend QA.  
+4. **Revisión manual del equipo o docente** antes del Release.  
+
+Solo si las tres primeras condiciones se cumplen, se aprueba manualmente el pase a Producción desde el pipeline Release.
+
+---
+
+## 🚀 ¿Cómo validás que un despliegue fue exitoso?
+- Reviso el log del **Azure Pipeline** para confirmar que el task `AzureWebApp@1` finalizó con código `0`.
+- Accedo a la URL desplegada (`myshop1qa.azurewebsites.net` o `myshop1prod.azurewebsites.net`) y verifico la respuesta del frontend y del endpoint `/api/products`.
+- También puedo usar la pestaña **“Logs → Deployment Center”** en Azure Portal para corroborar que los archivos fueron publicados correctamente.
+
+---
+
+## 🔁 ¿Cómo ejecutás un rollback y en qué situaciones?
+El rollback se realiza desde **Azure Portal → Web App → Deployment Center → History**:
+- Selecciono una versión anterior del despliegue (QA o PROD).
+- Hago clic en “Redeploy” para volver al estado anterior.
+
+Se ejecuta un rollback si:
+1. La app deja de responder o lanza errores 500 tras un deploy.  
+2. Los tests post-despliegue fallan.  
+3. Se detecta una regresión funcional en producción.
+
+Gracias a los artefactos `server.zip` y `client-prod.zip` guardados por el pipeline, puedo revertir a una versión estable rápidamente.
+
+---
+
+## 🧩 Conclusión general de ambas defensas
+
+El flujo completo **TP05 + TP06**

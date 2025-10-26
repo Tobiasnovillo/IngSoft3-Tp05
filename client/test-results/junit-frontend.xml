@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="jest tests" tests="2" failures="0" errors="0" time="2.929">
+  <testsuite name="undefined" errors="0" failures="0" skipped="0" timestamp="2025-10-24T21:31:10" time="1.309" tests="2">
+    <testcase classname=" getProducts devuelve array" name=" getProducts devuelve array" time="0.009">
+    </testcase>
+    <testcase classname=" getProducts lanza si la red falla" name=" getProducts lanza si la red falla" time="0.005">
+    </testcase>
+  </testsuite>
+</testsuites>

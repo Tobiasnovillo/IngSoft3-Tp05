@@ -30,7 +30,34 @@ stages:
         npm run install-all
       displayName: "Install root deps"
 
-    # ---------- FRONTEND QA ----------
+    # ======================================================
+    # 🧪 UNIT TESTS (Backend + Frontend)
+    # ======================================================
+    - script: |
+        echo "🧪 Ejecutando pruebas unitarias del backend..."
+        cd server
+        npm ci
+        npm test
+        echo "✅ Backend tests completados"
+
+        echo "🧪 Ejecutando pruebas unitarias del frontend..."
+        cd ../client
+        npm ci
+        npm test
+        echo "✅ Frontend tests completados"
+      displayName: "Run Unit Tests (Backend + Frontend)"
+      continueOnError: false  # ❌ Si algún test falla, el pipeline se detiene
+
+    # (opcional) publicar resultados de tests en Azure DevOps
+    - task: PublishTestResults@2
+      inputs:
+        testResultsFiles: '**/junit-*.xml'
+        testRunTitle: 'MiniShop Unit Tests'
+      condition: succeededOrFailed()
+
+    # ======================================================
+    # 🧱 BUILD FRONTEND QA
+    # ======================================================
     - script: |
         echo "🧹 Limpiando build previo..."
         rm -rf client/build
@@ -43,6 +70,7 @@ stages:
 
         echo "📦 Empaquetando client-qa.zip"
       displayName: "Build frontend QA"
+
     - task: ArchiveFiles@2
       inputs:
         rootFolderOrFile: 'client/build'
@@ -51,9 +79,9 @@ stages:
         archiveFile: '$(Build.ArtifactStagingDirectory)/client-qa.zip'
         replaceExistingArchive: true
 
-    # ---------- FRONTEND PROD ----------
-    # IMPORTANTe: SOBREESCRIBIMOS explícitamente la URL de PROD aquí.
-    # Si preferís, podés guardarla como variable de minishop-prod y leerla con $(REACT_APP_API_BASE_URL_PROD)
+    # ======================================================
+    # 🧱 BUILD FRONTEND PROD
+    # ======================================================
     - script: |
         echo "🧹 Limpiando build previo..."
         rm -rf client/build
@@ -68,6 +96,7 @@ stages:
 
         echo "📦 Empaquetando client-prod.zip"
       displayName: "Build frontend PROD (URL explícita)"
+
     - task: ArchiveFiles@2
       inputs:
         rootFolderOrFile: 'client/build'
@@ -76,7 +105,9 @@ stages:
         archiveFile: '$(Build.ArtifactStagingDirectory)/client-prod.zip'
         replaceExistingArchive: true
 
-    # ---------- BACKEND ----------
+    # ======================================================
+    # 🧱 BUILD BACKEND
+    # ======================================================
     - script: |
         echo "🧹 Eliminando SQLite locales antes de empaquetar..."
         find server -name "database.sqlite" -type f -delete || true
